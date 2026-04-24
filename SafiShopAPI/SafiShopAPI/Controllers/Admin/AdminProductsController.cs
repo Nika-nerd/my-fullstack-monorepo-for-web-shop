@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SafiShopAPI.Data;
 using SafiShopAPI.Models;
 using SafiShopAPI.DTOs;
+using SafiShopAPI.Services;
 
 namespace SafiShopAPI.Controllers.Admin;
 
@@ -11,10 +12,13 @@ namespace SafiShopAPI.Controllers.Admin;
 public class AdminProductsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    
+    private readonly IFileService _fileService;
 
-    public AdminProductsController(ApplicationDbContext context)
+    public AdminProductsController(ApplicationDbContext context, IFileService fileService)
     {
         _context = context;
+        _fileService = fileService;
     }
 
     
@@ -29,8 +33,13 @@ public class AdminProductsController : ControllerBase
 
     
     [HttpPost]
-    public async Task<ActionResult<Product>> CreateProduct(ProductCreateDto dto)
+    [Consumes("multipart/form-data")] // Указываем Swagger-у, что это форма с файлом
+    public async Task<ActionResult> CreateProduct([FromForm] ProductCreateDto dto, IFormFile image)
     {
+        
+        string imageUrl = await _fileService.SaveImageAsync(image);
+
+        // 2. Создаем модель товара
         var product = new Product
         {
             Id = Guid.NewGuid(),
@@ -38,8 +47,8 @@ public class AdminProductsController : ControllerBase
             Description = dto.Description,
             BasePrice = dto.BasePrice,
             DiscountPrice = dto.DiscountPrice,
-            ImageUrl = dto.ImageUrl,
             IsPublished = dto.IsPublished,
+            ImageUrl = imageUrl, // Ссылка на файл
             Variants = dto.Variants.Select(v => new ProductVariant
             {
                 Id = Guid.NewGuid(),
@@ -51,7 +60,7 @@ public class AdminProductsController : ControllerBase
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetAllProducts), new { id = product.Id }, product);
+        return Ok(product);
     }
 
     

@@ -6,6 +6,7 @@ obj/
 *.user
 *.sln.docstate
 
-
 docker-compose.yml
 *.envdocker-compose.yml
+
+.env

@@ -5,12 +5,25 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD}.
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: safi_shop
     ports:
       - "5434:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
+
+  safi-api:
+    build: .
+    container_name: safi_store_api
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "5005:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=db;Database=safi_shop;Username=postgres;Password=${DB_PASSWORD}
+    volumes:
+      - ./wwwroot/uploads:/app/wwwroot/uploads
 
 volumes:
   postgres_data:
