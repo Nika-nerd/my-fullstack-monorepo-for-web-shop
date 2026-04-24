@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: safi_store_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}.
+      POSTGRES_DB: safi_shop
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  postgres_data:
