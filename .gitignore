@@ -1,0 +1,9 @@
+node_modules/
+*.log
+.eslintcache
+.turbo
+.idea/
+*.swp
+.vscode/
+
+.DS_Store
