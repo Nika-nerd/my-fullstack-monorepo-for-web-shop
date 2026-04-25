@@ -19,5 +19,14 @@ namespace SafiShopAPI.Models;
         public string Size { get; set; } = string.Empty; // S, M, L, XL
         public int StockQuantity { get; set; }
         public Guid ProductId { get; set; }
+
+        public Product Product { get; set; } = null!;
+    }
+
+
+    public class TelegramSettings
+    {
+        public string BotToken { get; set; } = string.Empty;
+        public string AdminChatId { get; set; } = string.Empty;
     }
 

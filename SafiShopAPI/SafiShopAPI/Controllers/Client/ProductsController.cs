@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SafiShopAPI.Data;
 using SafiShopAPI.Models;
+using SafiShopAPI.DTOs;
+using SafiShopAPI.Services;
 
 namespace SafiShopAPI.Controllers.Client;
 
@@ -16,10 +18,10 @@ public class ProductsController : ControllerBase
         _context = context;
     }
 
-    
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetCatalog()
     {
+       
         return await _context.Products
             .Include(p => p.Variants)
             .Where(p => p.IsPublished) 
@@ -27,17 +29,54 @@ public class ProductsController : ControllerBase
             .ToListAsync();
     }
 
-    
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<Product>> GetProduct(Guid id)
+    [HttpPost("checkout")]
+    public async Task<IActionResult> Checkout(
+        [FromBody] CreateOrderDto dto, 
+        [FromServices] INotificationService notificationService)
     {
-        var product = await _context.Products
-            .Include(p => p.Variants)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == id && p.IsPublished);
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            CustomerName = dto.CustomerName,
+            CustomerPhone = dto.CustomerPhone,
+            Status = OrderStatus.Pending,
+            CreatedAt = DateTime.UtcNow 
+        };
 
-        if (product == null) return NotFound();
+        decimal total = 0;
 
-        return product;
+        foreach (var item in dto.Items)
+        {
+           
+            var variant = await _context.ProductVariants
+                .Include(v => v.Product)
+                .FirstOrDefaultAsync(v => v.Id == item.ProductVariantId);
+
+            if (variant == null) return BadRequest("Товар не найден");
+            if (variant.StockQuantity < item.Quantity) return BadRequest($"Недостаточно {variant.Product.Name}");
+
+            var price = variant.Product.DiscountPrice ?? variant.Product.BasePrice;
+            
+            order.Items.Add(new OrderItem
+            {
+                Id = Guid.NewGuid(),
+                ProductVariantId = variant.Id,
+                ProductName = variant.Product.Name,
+                Size = variant.Size,
+                Quantity = item.Quantity,
+                PriceAtPurchase = price
+            });
+
+            total += price * item.Quantity;
+        }
+
+        order.TotalAmount = total;
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync();
+
+      
+        await notificationService.SendOrderNotificationAsync(order);
+
+        return Ok(new { message = "Заказ создан, уведомление отправлено", orderId = order.Id });
     }
 }

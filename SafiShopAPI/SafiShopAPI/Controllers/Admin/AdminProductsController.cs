@@ -33,23 +33,57 @@ public class AdminProductsController : ControllerBase
 
     
     [HttpPost]
-    [Consumes("multipart/form-data")] // Указываем Swagger-у, что это форма с файлом
-    public async Task<ActionResult> CreateProduct([FromForm] ProductCreateDto dto, IFormFile image)
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult> CreateProduct(
+        [FromForm] string name,
+        [FromForm] string description,
+        [FromForm] decimal basePrice,
+        [FromForm] decimal? discountPrice,
+        [FromForm] bool isPublished,
+        [FromForm] string variantsJson, 
+        IFormFile image)
     {
-        
+       
         string imageUrl = await _fileService.SaveImageAsync(image);
 
-        // 2. Создаем модель товара
+        
+        var jsonString = variantsJson.Trim();
+
+
+        if (jsonString.StartsWith("{") && !jsonString.StartsWith("["))
+        {
+            jsonString = $"[{jsonString}]";
+        }
+
+        List<ProductVariantDto> variants;
+        try 
+        {
+            var options = new System.Text.Json.JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+               
+                NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString 
+            };
+
+            variants = System.Text.Json.JsonSerializer.Deserialize<List<ProductVariantDto>>(jsonString, options) 
+                       ?? new List<ProductVariantDto>();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Ошибка JSON: {ex.Message}. Итоговая строка: {jsonString}");
+        }
+
+       
         var product = new Product
         {
             Id = Guid.NewGuid(),
-            Name = dto.Name,
-            Description = dto.Description,
-            BasePrice = dto.BasePrice,
-            DiscountPrice = dto.DiscountPrice,
-            IsPublished = dto.IsPublished,
-            ImageUrl = imageUrl, // Ссылка на файл
-            Variants = dto.Variants.Select(v => new ProductVariant
+            Name = name,
+            Description = description,
+            BasePrice = basePrice,
+            DiscountPrice = discountPrice,
+            IsPublished = isPublished,
+            ImageUrl = imageUrl,
+            Variants = variants.Select(v => new ProductVariant
             {
                 Id = Guid.NewGuid(),
                 Size = v.Size,
@@ -62,7 +96,6 @@ public class AdminProductsController : ControllerBase
 
         return Ok(product);
     }
-
     
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteProduct(Guid id)
