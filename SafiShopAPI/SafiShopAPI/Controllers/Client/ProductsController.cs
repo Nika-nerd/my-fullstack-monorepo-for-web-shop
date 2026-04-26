@@ -8,7 +8,7 @@ using SafiShopAPI.Services;
 namespace SafiShopAPI.Controllers.Client;
 
 [ApiController]
-[Route("api/products")] 
+[Route("api/products")]
 public class ProductsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -21,17 +21,17 @@ public class ProductsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetCatalog()
     {
-       
+
         return await _context.Products
             .Include(p => p.Variants)
-            .Where(p => p.IsPublished) 
-            .AsNoTracking() 
+            .Where(p => p.IsPublished)
+            .AsNoTracking()
             .ToListAsync();
     }
 
     [HttpPost("checkout")]
     public async Task<IActionResult> Checkout(
-        [FromBody] CreateOrderDto dto, 
+        [FromBody] CreateOrderDto dto,
         [FromServices] INotificationService notificationService)
     {
         var order = new Order
@@ -40,14 +40,14 @@ public class ProductsController : ControllerBase
             CustomerName = dto.CustomerName,
             CustomerPhone = dto.CustomerPhone,
             Status = OrderStatus.Pending,
-            CreatedAt = DateTime.UtcNow 
+            CreatedAt = DateTime.UtcNow
         };
 
         decimal total = 0;
 
         foreach (var item in dto.Items)
         {
-           
+
             var variant = await _context.ProductVariants
                 .Include(v => v.Product)
                 .FirstOrDefaultAsync(v => v.Id == item.ProductVariantId);
@@ -56,7 +56,7 @@ public class ProductsController : ControllerBase
             if (variant.StockQuantity < item.Quantity) return BadRequest($"Недостаточно {variant.Product.Name}");
 
             var price = variant.Product.DiscountPrice ?? variant.Product.BasePrice;
-            
+
             order.Items.Add(new OrderItem
             {
                 Id = Guid.NewGuid(),
@@ -74,7 +74,7 @@ public class ProductsController : ControllerBase
         _context.Orders.Add(order);
         await _context.SaveChangesAsync();
 
-      
+
         await notificationService.SendOrderNotificationAsync(order);
 
         return Ok(new { message = "Заказ создан, уведомление отправлено", orderId = order.Id });

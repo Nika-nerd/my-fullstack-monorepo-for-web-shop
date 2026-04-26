@@ -8,11 +8,11 @@ using SafiShopAPI.Services;
 namespace SafiShopAPI.Controllers.Admin;
 
 [ApiController]
-[Route("api/admin/products")] 
+[Route("api/admin/products")]
 public class AdminProductsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    
+
     private readonly IFileService _fileService;
 
     public AdminProductsController(ApplicationDbContext context, IFileService fileService)
@@ -21,7 +21,7 @@ public class AdminProductsController : ControllerBase
         _fileService = fileService;
     }
 
-    
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetAllProducts()
     {
@@ -31,7 +31,7 @@ public class AdminProductsController : ControllerBase
             .ToListAsync();
     }
 
-    
+
     [HttpPost]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult> CreateProduct(
@@ -40,13 +40,13 @@ public class AdminProductsController : ControllerBase
         [FromForm] decimal basePrice,
         [FromForm] decimal? discountPrice,
         [FromForm] bool isPublished,
-        [FromForm] string variantsJson, 
+        [FromForm] string variantsJson,
         IFormFile image)
     {
-       
+
         string imageUrl = await _fileService.SaveImageAsync(image);
 
-        
+
         var jsonString = variantsJson.Trim();
 
 
@@ -56,16 +56,16 @@ public class AdminProductsController : ControllerBase
         }
 
         List<ProductVariantDto> variants;
-        try 
+        try
         {
-            var options = new System.Text.Json.JsonSerializerOptions 
-            { 
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
                 PropertyNameCaseInsensitive = true,
-               
-                NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString 
+
+                NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
             };
 
-            variants = System.Text.Json.JsonSerializer.Deserialize<List<ProductVariantDto>>(jsonString, options) 
+            variants = System.Text.Json.JsonSerializer.Deserialize<List<ProductVariantDto>>(jsonString, options)
                        ?? new List<ProductVariantDto>();
         }
         catch (Exception ex)
@@ -73,7 +73,7 @@ public class AdminProductsController : ControllerBase
             return BadRequest($"Ошибка JSON: {ex.Message}. Итоговая строка: {jsonString}");
         }
 
-       
+
         var product = new Product
         {
             Id = Guid.NewGuid(),
@@ -96,7 +96,7 @@ public class AdminProductsController : ControllerBase
 
         return Ok(product);
     }
-    
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteProduct(Guid id)
     {
